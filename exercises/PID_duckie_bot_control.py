@@ -13,6 +13,13 @@ import gym
 from gym_duckietown.envs import DuckietownEnv
 from pyglet.window import key
 
+#libraries for apriltags detection
+from dt_apriltags import Detector
+from PIL import Image
+import yaml
+import cv2
+from cv2 import imshow
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--env-name", default=None)
 parser.add_argument("--map-name", default="udem1")
@@ -36,6 +43,16 @@ prev_dist = 0.0    # distance_error(k-1)
 prev_angle = 0.0   # angle_error(k-1)
 storage = 0.0  # integrator state ( use this storing variable to simulate the state of integrator)
 first = True
+
+#object from class detector for identifying apriltags
+at_detector = Detector(families='tag36h11',
+                       nthreads=1,
+                       quad_decimate=1.0,
+                       quad_sigma=0.0,
+                       refine_edges=1,
+                       decode_sharpening=0.25,
+                       debug=0)
+
 
 while True:
 
@@ -80,6 +97,24 @@ while True:
     # update previous value to gain the incremental ratio in the next loop
     prev_dist = distance_to_road_center
     prev_angle = angle_from_straight_in_rads
+    
+    #catch apriltags
+    imgage = Image.fromarray(obs)
+    imgage.save("test_image.png")
+
+    test_images_path = '.'
+    with open(test_images_path + '/images.yaml', 'r') as stream:
+     parameters = yaml.load(stream)
+
+    img = cv2.imread(test_images_path+'/'+parameters['sample_test']['file'], cv2.IMREAD_GRAYSCALE)
+    cameraMatrix = np.array(parameters['sample_test']['K']).reshape((3,3))
+    camera_params = ( cameraMatrix[0,0], cameraMatrix[1,1], cameraMatrix[0,2], cameraMatrix[1,2] )
+
+    tags = at_detector.detect(img, True, camera_params, parameters['sample_test']['tag_size'])
+    tag_ids = [tag.tag_id for tag in tags]
+    if len(tags) > 0:
+        print("TAG(S) FOUND AT STEP ",env.unwrapped.step_count,"!")
+        print(len(tags), " tag(s) found: ", tag_ids)
     
     # set controls
     obs, recompense, fini, info = env.step([driving_speed, angular_speed])
