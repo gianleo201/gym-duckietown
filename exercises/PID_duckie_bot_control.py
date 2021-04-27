@@ -43,19 +43,12 @@ while True:
     distance_to_road_center = lane_pose.dist
     angle_from_straight_in_rads = lane_pose.angle_rad
 
-    ###### Commencez à remplir le code ici.
-    # TODO: Décide comment calculer la vitesse et la direction
-
     # proportional constant on angle
     k_p_angle = 10
     prop_angle_action = k_p_angle * angle_from_straight_in_rads
     # proportional constant on distance 
     k_p_dist = 15
     prop_dist_action = k_p_dist * distance_to_road_center
-    # integral constant on distance ( still not using it up to now)
-    k_i_dist = 1.2
-    storage += sampling_time * distance_to_road_center
-    integral_dist_action = k_i_dist * storage
     # derivative constant on distance
     k_d_dist = 10
     deriv_dist_action = k_d_dist * (distance_to_road_center - prev_dist)*sampling_time
@@ -72,10 +65,18 @@ while True:
      # driving speed of duckie_bot (positive when robot goes forward)
     driving_speed = 0.25  # up to now errors on angle and dist doesn't affect driving speed
 
+    # New controller only proportional from state space linearized (it works worse)
+    lambda_1 = -5
+    lambda_2 = -5
+
+    command = ((lambda_1*lambda_2)/(driving_speed*1.4706))*distance_to_road_center+(lambda_1+lambda_2)*angle_from_straight_in_rads
+
+
     # angular speed of duckie_bot (positive when the duckie_bot rotate to the left)
     angular_speed = (
         prop_dist_action + deriv_dist_action + prop_angle_action + deriv_angle_action
     ) # also the distance from the center of road affect the angular speed in order to lead duckie_bot toward the center
+
 
     # update previous value to gain the incremental ratio in the next loop
     prev_dist = distance_to_road_center
