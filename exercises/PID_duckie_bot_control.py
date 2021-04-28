@@ -41,7 +41,7 @@ VARIABILE_DI_PROVA_INUTILE = "Bene"
 sampling_time = 0.1  # not sure about this
 prev_dist = 0.0    # distance_error(k-1)
 prev_angle = 0.0   # angle_error(k-1)
-storage = 0.0  # integrator state ( use this storing variable to simulate the state of integrator)
+counter = 0 # integrator state ( use this storing variable to simulate the state of integrator)
 first = True
 
 #object from class detector for identifying apriltags
@@ -86,7 +86,7 @@ while True:
     lambda_1 = -5
     lambda_2 = -5
 
-    command = ((lambda_1*lambda_2)/(driving_speed*1.4706))*distance_to_road_center+(lambda_1+lambda_2)*angle_from_straight_in_rads
+    #command = ((lambda_1*lambda_2)/(driving_speed*1.4706))*distance_to_road_center+(lambda_1+lambda_2)*angle_from_straight_in_rads
 
 
     # angular speed of duckie_bot (positive when the duckie_bot rotate to the left)
@@ -99,23 +99,29 @@ while True:
     prev_dist = distance_to_road_center
     prev_angle = angle_from_straight_in_rads
     
-    #catch apriltags
-    imgage = Image.fromarray(obs)
-    imgage.save("test_image.png")
+    # code executed only every 5 frames
+    if (counter % 30) != 0:
+        # catch apriltags
+        imgage = Image.fromarray(obs)
+        # this is the line code that makes the program slower beacuase interacts with hard disk
+        imgage.save("test_image.png")
 
-    test_images_path = '.'
-    with open(test_images_path + '/images.yaml', 'r') as stream:
-     parameters = yaml.load(stream)
+        test_images_path = '.'
+        with open(test_images_path + '/images.yaml', 'r') as stream:
+            parameters = yaml.load(stream)
 
-    img = cv2.imread(test_images_path+'/'+parameters['sample_test']['file'], cv2.IMREAD_GRAYSCALE)
-    cameraMatrix = np.array(parameters['sample_test']['K']).reshape((3,3))
-    camera_params = ( cameraMatrix[0,0], cameraMatrix[1,1], cameraMatrix[0,2], cameraMatrix[1,2] )
+        img = cv2.imread(test_images_path+'/'+parameters['sample_test']['file'], cv2.IMREAD_GRAYSCALE)
+        cameraMatrix = np.array(parameters['sample_test']['K']).reshape((3,3))
+        camera_params = ( cameraMatrix[0,0], cameraMatrix[1,1], cameraMatrix[0,2], cameraMatrix[1,2] )
 
-    tags = at_detector.detect(img, True, camera_params, parameters['sample_test']['tag_size'])
-    tag_ids = [tag.tag_id for tag in tags]
-    if len(tags) > 0:
-        print("TAG(S) FOUND AT STEP ",env.unwrapped.step_count,"!")
-        print(len(tags), " tag(s) found: ", tag_ids)
+        tags = at_detector.detect(img, True, camera_params, parameters['sample_test']['tag_size'])
+        tag_ids = [tag.tag_id for tag in tags]
+        if len(tags) > 0:
+            print("TAG(S) FOUND AT STEP ",env.unwrapped.step_count,"!")
+            print(len(tags), " tag(s) found: ", tag_ids)
+        counter = 0
+    else:
+        counter += 1
     
     # set controls
     obs, recompense, fini, info = env.step([driving_speed, angular_speed])
