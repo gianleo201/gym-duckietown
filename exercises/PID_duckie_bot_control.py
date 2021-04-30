@@ -26,6 +26,8 @@ parser.add_argument("--map-name", default="udem1")
 parser.add_argument("--no-pause", action="store_true", help="don't pause on failure")
 args = parser.parse_args()
 
+env: DuckietownEnv
+
 if args.env_name is None:
     env = DuckietownEnv(map_name=args.map_name, domain_rand=False, draw_bbox=False)
 else:
@@ -36,13 +38,18 @@ env.render()
 
 total_recompense = 0
 
-VARIABILE_DI_PROVA_INUTILE = "Bene"
+DEFAULT_STATE = -888
+DEFAULT_SPEED = 0.35
+STOP_WAITING = 0
 
-sampling_time = 0.1  # not sure about this
-prev_dist = 0.0    # distance_error(k-1)
-prev_angle = 0.0   # angle_error(k-1)
-counter = 0 # integrator state ( use this storing variable to simulate the state of integrator)
+sampling_time = 0.1 # not sure about this
+prev_dist = 0.0     # distance_error(k-1)
+prev_angle = 0.0    # angle_error(k-1)
+counter = 0         # handle cycles flow
+STATE = DEFAULT_STATE
 first = True
+driving_speed = DEFAULT_SPEED # driving speed of bot
+angular_speed = 0.0   # angular speed of bot
 
 #object from class detector for identifying apriltags
 at_detector = Detector(families='tag36h11',
@@ -50,8 +57,16 @@ at_detector = Detector(families='tag36h11',
                        quad_decimate=1.0,
                        quad_sigma=0.0,
                        refine_edges=1,
-                       decode_sharpening=0.25,
+                       decode_sharpening=0.10,
                        debug=0)
+
+# load settings from yaml file
+test_images_path = '.'
+with open(test_images_path + '/images.yaml', 'r') as stream:
+    parameters = yaml.load(stream)
+
+cameraMatrix = np.array(parameters['sample_test']['K']).reshape((3,3))
+camera_params = ( cameraMatrix[0,0], cameraMatrix[1,1], cameraMatrix[0,2], cameraMatrix[1,2] )
 
 
 while True:
@@ -64,13 +79,13 @@ while True:
     k_p_angle = 10
     prop_angle_action = k_p_angle * angle_from_straight_in_rads
     # proportional constant on distance 
-    k_p_dist = 15
+    k_p_dist = 12
     prop_dist_action = k_p_dist * distance_to_road_center
     # derivative constant on distance
     k_d_dist = 10
     deriv_dist_action = k_d_dist * (distance_to_road_center - prev_dist)*sampling_time
     # derivative constant on angle
-    k_d_angle = 10
+    k_d_angle = 25
     deriv_angle_action = k_d_angle * (angle_from_straight_in_rads - prev_angle)*sampling_time
 
     # ignore derivative actions on the first loop
@@ -79,14 +94,10 @@ while True:
         deriv_dist_action = 0.0
         first = False
 
-     # driving speed of duckie_bot (positive when robot goes forward)
-    driving_speed = 0.25  # up to now errors on angle and dist doesn't affect driving speed
-
     # New controller only proportional from state space linearized (it works worse)
     lambda_1 = -5
     lambda_2 = -5
-
-    #command = ((lambda_1*lambda_2)/(driving_speed*1.4706))*distance_to_road_center+(lambda_1+lambda_2)*angle_from_straight_in_rads
+    # command = ((lambda_1*lambda_2)/(driving_speed*1.4706))*distance_to_road_center+(lambda_1+lambda_2)*angle_from_straight_in_rads
 
 
     # angular speed of duckie_bot (positive when the duckie_bot rotate to the left)
@@ -99,28 +110,39 @@ while True:
     prev_dist = distance_to_road_center
     prev_angle = angle_from_straight_in_rads
     
-    # code executed only every 5 frames
-    if (counter % 30) != 0:
+    # code executed only every tot frames
+    if STATE == -888 and ((counter % 5) != 0):
         # catch apriltags
-        imgage = Image.fromarray(obs)
+        # imgage = Image.fromarray(obs)
         # this is the line code that makes the program slower beacuase interacts with hard disk
-        imgage.save("test_image.png")
+        # imgage.save("test_image.png")
 
-        test_images_path = '.'
-        with open(test_images_path + '/images.yaml', 'r') as stream:
-            parameters = yaml.load(stream)
-
-        img = cv2.imread(test_images_path+'/'+parameters['sample_test']['file'], cv2.IMREAD_GRAYSCALE)
-        cameraMatrix = np.array(parameters['sample_test']['K']).reshape((3,3))
-        camera_params = ( cameraMatrix[0,0], cameraMatrix[1,1], cameraMatrix[0,2], cameraMatrix[1,2] )
-
-        tags = at_detector.detect(img, True, camera_params, parameters['sample_test']['tag_size'])
+        # img = cv2.imread(test_images_path+'/'+parameters['sample_test']['file'], cv2.IMREAD_GRAYSCALE)
+        tags = at_detector.detect(cv2.cvtColor(obs, cv2.COLOR_BGR2GRAY), True, camera_params, parameters['sample_test']['tag_size'])
         tag_ids = [tag.tag_id for tag in tags]
         if len(tags) > 0:
             print("TAG(S) FOUND AT STEP ",env.unwrapped.step_count,"!")
             print(len(tags), " tag(s) found: ", tag_ids)
+            STATE = tag_ids[0]
         counter = 0
-    else:
+    elif STATE == 1:
+        driving_speed -= 0.005
+        if driving_speed <= 0:
+            driving_speed = 0
+            STOP_WAITING = 20
+            STATE = 0
+    elif STATE == 0:
+        if (STOP_WAITING == 0):
+            STATE = -1
+        else:
+            STOP_WAITING -= 1
+    elif STATE == -1:
+        driving_speed = DEFAULT_SPEED
+        STATE = DEFAULT_STATE
+    elif STATE == 11:
+        driving_speed = 0.4
+        STATE = DEFAULT_STATE
+    if counter % 5 == 0:
         counter += 1
     
     # set controls
@@ -128,10 +150,12 @@ while True:
     total_recompense += recompense
 
     # prints variations of parameters
+    """
     print(
         "dist_err: %.3f, angle_err: %.3f, prop_angle_action: %.3f, prop_dist_action: %.3f, deriv_dist_action: %.3f, deriv_angle action: %.3f"
         % (distance_to_road_center, angle_from_straight_in_rads, prop_angle_action, prop_dist_action, deriv_dist_action, deriv_angle_action, )
     )
+    """
 
     #enables user to reset or exit the simulation
     @env.unwrapped.window.event
