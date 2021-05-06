@@ -3,6 +3,7 @@ Controller for duckie bot in Duckietown environment
 """
 
 # run "python3 basic_control.py --map-name <map_name>" to start simulation
+# cd ~/.local/lib/python3.8/site-packages/duckietown_world/data/gd1/maps to show all the maps
 
 import time
 import sys
@@ -39,7 +40,8 @@ env.render()
 total_recompense = 0
 
 DEFAULT_STATE = -888
-DEFAULT_SPEED = 0.35
+#DEFAULT_SPEED = 0.35
+DEFAULT_SPEED = 0.5
 STOP_WAITING = 0
 
 sampling_time = 0.1 # not sure about this
@@ -50,6 +52,7 @@ STATE = DEFAULT_STATE
 first = True
 driving_speed = DEFAULT_SPEED # driving speed of bot
 angular_speed = 0.0   # angular speed of bot
+rotation_strength = 2 #angular speed when turning left/right
 
 #object from class detector for identifying apriltags
 at_detector = Detector(families='tag36h11',
@@ -118,15 +121,22 @@ while True:
         # imgage.save("test_image.png")
 
         # img = cv2.imread(test_images_path+'/'+parameters['sample_test']['file'], cv2.IMREAD_GRAYSCALE)
+        ignore = 0 #if the apriltag is too far, ignore it
         tags = at_detector.detect(cv2.cvtColor(obs, cv2.COLOR_BGR2GRAY), True, camera_params, parameters['sample_test']['tag_size'])
         tag_ids = [tag.tag_id for tag in tags]
+        tag_pos = [tag.pose_t[1] for tag in tags]
         if len(tags) > 0:
-            print("TAG(S) FOUND AT STEP ",env.unwrapped.step_count,"!")
-            print(len(tags), " tag(s) found: ", tag_ids)
-            STATE = tag_ids[0]
+            if(abs(tags[0].pose_t[1])>0.05):
+                ignore = 1
+            if not ignore:
+                print("TAG(S) FOUND AT STEP ",env.unwrapped.step_count,"!")
+                print(tag_pos)
+                print(len(tags), " tag(s) found: ", tag_ids)
+                STATE = tag_ids[0]
         counter = 0
     elif STATE == 1:
-        driving_speed -= 0.005
+        #driving_speed -= 0.005
+        driving_speed -= 0.035
         if driving_speed <= 0:
             driving_speed = 0
             STOP_WAITING = 20
@@ -142,6 +152,22 @@ while True:
     elif STATE == 11:
         driving_speed = 0.4
         STATE = DEFAULT_STATE
+    elif STATE == 9:
+        STOP_ROTATING = 120
+        STATE = -2
+    elif STATE == 10:
+        STOP_ROTATING = 120
+        STATE = -3
+    elif STATE == -2:
+        STOP_ROTATING -= rotation_strength
+        angular_speed = prev_angle - rotation_strength
+        if(STOP_ROTATING == 0):
+            STATE = -1
+    elif STATE == -3:
+        STOP_ROTATING -= rotation_strength
+        angular_speed = prev_angle + rotation_strength
+        if(STOP_ROTATING == 0):
+            STATE = -1
     if counter % 5 == 0:
         counter += 1
     
