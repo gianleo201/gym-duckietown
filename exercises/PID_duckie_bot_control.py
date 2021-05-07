@@ -43,6 +43,7 @@ DEFAULT_STATE = -888
 #DEFAULT_SPEED = 0.35
 DEFAULT_SPEED = 0.5
 STOP_WAITING = 0
+STOP_ROTATING = 0
 
 sampling_time = 0.1 # not sure about this
 prev_dist = 0.0     # distance_error(k-1)
@@ -75,20 +76,20 @@ camera_params = ( cameraMatrix[0,0], cameraMatrix[1,1], cameraMatrix[0,2], camer
 while True:
 
     lane_pose = env.get_lane_pos2(env.cur_pos, env.cur_angle)
-    distance_to_road_center = lane_pose.dist
+    distance_to_road_center = lane_pose.dist - 0.1
     angle_from_straight_in_rads = lane_pose.angle_rad
 
     # proportional constant on angle
-    k_p_angle = 10
+    k_p_angle = 20
     prop_angle_action = k_p_angle * angle_from_straight_in_rads
     # proportional constant on distance 
-    k_p_dist = 12
+    k_p_dist = 20
     prop_dist_action = k_p_dist * distance_to_road_center
     # derivative constant on distance
-    k_d_dist = 10
+    k_d_dist = 50
     deriv_dist_action = k_d_dist * (distance_to_road_center - prev_dist)*sampling_time
     # derivative constant on angle
-    k_d_angle = 25
+    k_d_angle = 1000
     deriv_angle_action = k_d_angle * (angle_from_straight_in_rads - prev_angle)*sampling_time
 
     # ignore derivative actions on the first loop
@@ -135,7 +136,6 @@ while True:
                 STATE = tag_ids[0]
         counter = 0
     elif STATE == 1:
-        #driving_speed -= 0.005
         driving_speed -= 0.035
         if driving_speed <= 0:
             driving_speed = 0
@@ -157,6 +157,7 @@ while True:
         STATE = -2
     elif STATE == 10:
         STOP_ROTATING = 120
+        STOP_WAITING = 20
         STATE = -3
     elif STATE == -2:
         STOP_ROTATING -= rotation_strength
@@ -164,10 +165,13 @@ while True:
         if(STOP_ROTATING == 0):
             STATE = -1
     elif STATE == -3:
-        STOP_ROTATING -= rotation_strength
-        angular_speed = prev_angle + rotation_strength
-        if(STOP_ROTATING == 0):
-            STATE = -1
+        if STOP_WAITING > 0:
+            STOP_WAITING -= 1
+        else:
+            STOP_ROTATING -= rotation_strength
+            angular_speed = prev_angle + rotation_strength
+            if(STOP_ROTATING == 0):
+                STATE = -1
     if counter % 5 == 0:
         counter += 1
     
