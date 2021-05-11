@@ -76,7 +76,7 @@ camera_params = ( cameraMatrix[0,0], cameraMatrix[1,1], cameraMatrix[0,2], camer
 while True:
 
     lane_pose = env.get_lane_pos2(env.cur_pos, env.cur_angle)
-    distance_to_road_center = lane_pose.dist - 0.1
+    distance_to_road_center = lane_pose.dist
     angle_from_straight_in_rads = lane_pose.angle_rad
 
     # proportional constant on angle
