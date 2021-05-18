@@ -44,6 +44,7 @@ DEFAULT_STATE = -888
 DEFAULT_SPEED = 0.5
 STOP_WAITING = 0
 STOP_ROTATING = 0
+TILE_SIZE = 0.585
 
 sampling_time = 0.1 # not sure about this
 prev_dist = 0.0     # distance_error(k-1)
@@ -72,12 +73,71 @@ with open(test_images_path + '/images.yaml', 'r') as stream:
 cameraMatrix = np.array(parameters['sample_test']['K']).reshape((3,3))
 camera_params = ( cameraMatrix[0,0], cameraMatrix[1,1], cameraMatrix[0,2], cameraMatrix[1,2] )
 
+#create lane for path following reading the yaml map file
+linea=[]
+percorso = []
+with open(test_images_path + '/VALERIO-8map.yaml', 'r') as stream:
+    parametri = yaml.load(stream)
+
+prova = np.array(parametri['lane_pos'])
+for elem in prova:
+    if(elem[0]=='curva'):
+        if(elem[1]=='sx-up'):
+            linea = np.array(parametri['curva_sx-up'])
+        elif(elem[1]=='dx-up'):
+            linea = np.array(parametri['curva_dx-up'])
+        elif(elem[1]=='sx-dwn'):
+            linea = np.array(parametri['curva_sx-dwn'])
+        else:
+            linea = np.array(parametri['curva_dx-dwn'])
+        for coord in linea:
+            coord[0]+= elem[2][0]
+            coord[1]+= elem[2][1]
+    else:
+        if(elem[0]=='vertical'):
+            linea = np.array(parametri['linea_verticale'])
+        else:
+            linea = np.array(parametri['linea_orizzontale'])
+        #print(linea)
+        #print(elem)
+        for coord in linea:
+            #print(coord)
+            if(elem[1]=='up'): 
+                coord[0]+= elem[2][0]
+                coord[1]+= elem[2][1]
+            else:
+                coord[0] = elem[2][0] - coord[0]
+                coord[1] = elem[2][1] - coord[1]
+    percorso.extend(linea)
+
+#print(prova)
+#print(percorso)
 
 while True:
+    min_dist = math.inf
+    posx = env.cur_pos[0]/TILE_SIZE
+    posy = env.cur_pos[2]/TILE_SIZE - 2
+    for i in range(len(percorso)):
+        punti = percorso[i]
+        dist = math.sqrt((posx-punti[0])*(posx-punti[0])+(posy-punti[1])*(posy-punti[1]))
+        if(dist < min_dist):
+            min_dist = dist
+            if(i!=len(percorso)-1):
+                angolo = math.atan2(percorso[i+1][1]-punti[1],percorso[i+1][0]-punti[0]) - env.cur_angle
+            else:
+                angolo = math.atan2(percorso[0][1]-punti[1],percorso[0][0]-punti[0]) - env.cur_angle
+            #angolo = math.atan2(punti[1]-percorso[i-1][1],punti[0]-percorso[i-1][0]) - env.cur_angle
+            punto = punti
+    print(min_dist, angolo)
+    print(posx, posy, punto, env.cur_angle)
 
     lane_pose = env.get_lane_pos2(env.cur_pos, env.cur_angle)
     distance_to_road_center = lane_pose.dist
     angle_from_straight_in_rads = lane_pose.angle_rad
+    #print(env.cur_pos, env.cur_angle, "\n", lane_pose)
+    print(lane_pose.dist, lane_pose.angle_rad)
+    distance_to_road_center = min_dist
+    #angle_from_straight_in_rads = angolo
 
     # proportional constant on angle
     k_p_angle = 20
