@@ -8,13 +8,15 @@
 # The orientations are North, South, East, West. This is the direction in
 # which the agent is expected to drive when going onto this tile.
 tiles:
-- [floor    , floor         , floor      , floor        , floor         , floor]
-- [floor    , curve_left/W  , straight/W , straight/W   , curve_left/N  , floor]
-- [floor    , straight/S    , grass      , grass        , straight/N    , floor]
-- [floor    , 3way_left/S   , straight/W , straight/W   , 3way_left/N   , floor]
-- [floor    , straight/S    , grass      , grass        , straight/N    , floor]
-- [floor    , curve_left/S  , straight/W , straight/W   , curve_left/E  , floor]
-- [floor    , floor         , floor      , floor        , floor         , floor]
+- [floor    , floor         , floor      , floor        , floor       , floor         , floor]
+- [floor    , curve_left/W  , straight/W , straight/W   , straight/W  , curve_left/N  , floor]
+- [floor    , straight/S    , grass      , grass        , grass       , straight/N    , floor]
+- [floor    , straight/S    , grass      , grass        , grass       , straight/N    , floor]
+- [floor    , 3way_left/S   , straight/W , straight/W   , straight/W  , 3way_left/N   , floor]
+- [floor    , straight/S    , grass      , grass        , grass       , straight/N    , floor]
+- [floor    , straight/S    , grass      , grass        , grass       , straight/N    , floor]
+- [floor    , curve_left/S  , straight/W , straight/W   , straight/W  , curve_left/E  , floor]
+- [floor    , floor         , floor      , floor        , floor       , floor         , floor]
 
 #here I'm tryng to drow the lane that the bot should follow
 linea_verticale:
@@ -53,6 +55,10 @@ lane_pos:
 - ['horizontal','dwn', [3.0,-0.5]]
 - ['curva'     ,  'sx-up', [2.0,-0.5]]
 
+lane_pos2:
+  ['vertical', 'up', [1.5,-0.5,3.5]]
+
+
 # The following is a listing of 3D objects placed on the map
 #
 # pos: object positions are scaled according to the tile size, so
@@ -71,32 +77,32 @@ objects:
   height: 0.18
  apriltag2:
   kind: sign_stop
-  pos: [2.96, 2.04]
+  pos: [3.96, 2.04]
   rotate: 180
   height: 0.18
  apriltag3: #cross
   kind: sign_right_T_intersect
-  pos: [3.96, 2.04]
+  pos: [4.96, 2.04]
   rotate: 180
   height: 0.18
  apriltag4:
-  kind: sign_stop
-  pos: [2.96, 2.94]
+  kind: sign_pedestrian
+  pos: [2.96, 3.94]
   rotate: 0
   height: 0.18
  apriltag5: #cross
-  kind: sign_right_T_intersect
+  kind: sign_t_light_ahead
   pos: [2.04, 2.04]
   rotate: 90
   height: 0.18
  apriltag6:
-  kind: sign_stop
-  pos: [2.96, 0.04]
+  kind: sign_duck_crossing
+  pos: [2.96, -1.04]
   rotate: 180
   height: 0.18
  apriltag7: #cross
   kind: sign_right_T_intersect
-  pos: [3.96, 0.94]
+  pos: [4.96, 0.94]
   rotate: -90
   height: 0.18
  apriltag8:
@@ -110,23 +116,18 @@ objects:
   rotate: 0
   height: 0.18
  apriltag10:
-  kind: sign_stop
-  pos: [2.96, 4.04]
+  kind: sign_pedestrian
+  pos: [2.96, 5.04]
   rotate: 180
   height: 0.18
  apriltag11: #cross
-  kind: sign_left_T_intersect
-  pos: [5.04, 1.94]
-  rotate: 90
-  height: 0.18
- apriltag12:
-  kind: sign_stop
-  pos: [5.04, 0.94]
+  kind: sign_t_light_ahead
+  pos: [6.04, 1.94]
   rotate: 90
   height: 0.18
  apriltag13:
-  kind: sign_stop
-  pos: [2.96, -1.04]
+  kind: sign_duck_crossing
+  pos: [2.96, -2.04]
   rotate: 0
   height: 0.18
  duckie1:
@@ -146,13 +147,17 @@ objects:
   height: 0.25
  duckie4:
   kind: duckie
-  pos: [2.5, 4.6]
+  pos: [2.5, 5.6]
   rotate: -90
   height: 0.28
  duckie5:
   kind: duckie
-  pos: [3.5, 4.3]
+  pos: [3.5, 5.3]
   rotate: -90
   height: 0.38
+ duckie6:
+  kind: duckie
+  pos: [2.51,1.02]
+  height: 0.1
 
 tile_size: 0.585

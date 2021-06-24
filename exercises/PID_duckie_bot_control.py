@@ -73,6 +73,7 @@ with open(test_images_path + '/images.yaml', 'r') as stream:
 cameraMatrix = np.array(parameters['sample_test']['K']).reshape((3,3))
 camera_params = ( cameraMatrix[0,0], cameraMatrix[1,1], cameraMatrix[0,2], cameraMatrix[1,2] )
 
+'''
 #create lane for path following reading the yaml map file
 linea=[]
 percorso = []
@@ -112,16 +113,55 @@ for elem in prova:
 
 #print(prova)
 #print(percorso)
+'''
 
 while True:
+    '''
     min_dist = math.inf
     posx = env.cur_pos[0]/TILE_SIZE
     posy = env.cur_pos[2]/TILE_SIZE - 2
-    for i in range(len(percorso)):
+
+    if posy>-1.5 and posy<4.5:
+        if posx<2:
+            #if posx<2 and posx>1.5: 
+            #    min_dist = posx-1.7
+            #else:
+            #    min_dist = posx-1.3
+            min_dist = posx - 1.3
+        else:
+            #if posx<5 and posx>4.5:
+            #    min_dist = posx-4.7
+            #else:
+            #    min_dist = posx-4.3
+            min_dist = posx - 5.7
+    else:
+        if posy>4.5:
+            #if posy>3 and posy<3.5:
+            #    min_dist = posy-3.3
+            #else:
+            #    min_dist = posy-3.7
+            min_dist = posy - 4.7
+        elif posy>0:
+            min_dist: posy - 0.7
+        else:
+            #if posy<0 and posy>-0.5:
+            #    min_dist = posy+0.3
+            #else:
+            #    min_dist = posy+0.7
+            min_dist = posy+1.7
+
+    
+    #if start==len(percorso)-1:
+    #    start = 0
+    min_dist = math.inf
+    posx = env.cur_pos[0]/TILE_SIZE
+    posy = env.cur_pos[2]/TILE_SIZE - 2
+    for i in range(start, len(percorso)):
         punti = percorso[i]
         dist = math.sqrt((posx-punti[0])*(posx-punti[0])+(posy-punti[1])*(posy-punti[1]))
         if(dist < min_dist):
             min_dist = dist
+            #start = i
             if(i!=len(percorso)-1):
                 angolo = math.atan2(percorso[i+1][1]-punti[1],percorso[i+1][0]-punti[0]) - env.cur_angle
             else:
@@ -129,28 +169,29 @@ while True:
             #angolo = math.atan2(punti[1]-percorso[i-1][1],punti[0]-percorso[i-1][0]) - env.cur_angle
             punto = punti
     print(min_dist, angolo)
-    print(posx, posy, punto, env.cur_angle)
+    print(posx, posy, punto, env.cur_angle)'''
 
     lane_pose = env.get_lane_pos2(env.cur_pos, env.cur_angle)
     distance_to_road_center = lane_pose.dist
     angle_from_straight_in_rads = lane_pose.angle_rad
-    #print(env.cur_pos, env.cur_angle, "\n", lane_pose)
-    print(lane_pose.dist, lane_pose.angle_rad)
-    distance_to_road_center = min_dist
+    #print(env.cur_pos, env.cur_angle, "\n")
+    #print(lane_pose.dist, lane_pose.angle_rad)
+    #print(min_dist, posx, posy)
+    #distance_to_road_center = min_dist
     #angle_from_straight_in_rads = angolo
 
     # proportional constant on angle
     k_p_angle = 20
     prop_angle_action = k_p_angle * angle_from_straight_in_rads
     # proportional constant on distance 
-    k_p_dist = 20
+    k_p_dist = 15
     prop_dist_action = k_p_dist * distance_to_road_center
     # derivative constant on distance
-    k_d_dist = 50
-    deriv_dist_action = k_d_dist * (distance_to_road_center - prev_dist)*sampling_time
+    k_d_dist = 60
+    deriv_dist_action = k_d_dist * (distance_to_road_center - prev_dist)/sampling_time
     # derivative constant on angle
     k_d_angle = 1000
-    deriv_angle_action = k_d_angle * (angle_from_straight_in_rads - prev_angle)*sampling_time
+    deriv_angle_action = k_d_angle * (angle_from_straight_in_rads - prev_angle)/sampling_time
 
     # ignore derivative actions on the first loop
     if first:
@@ -166,7 +207,7 @@ while True:
 
     # angular speed of duckie_bot (positive when the duckie_bot rotate to the left)
     angular_speed = (
-        prop_dist_action + deriv_dist_action + prop_angle_action + deriv_angle_action
+        prop_dist_action + deriv_dist_action  #+ prop_angle_action + deriv_angle_action
     ) # also the distance from the center of road affect the angular speed in order to lead duckie_bot toward the center
 
 
@@ -232,6 +273,19 @@ while True:
             angular_speed = prev_angle + rotation_strength
             if(STOP_ROTATING == 0):
                 STATE = -1
+    elif STATE == 12:
+        driving_speed = 0.18
+        STOP_WAITING = 60
+        STATE = 0
+    elif STATE == 95:
+        driving_speed -= 0.015
+        if driving_speed <= 0.3:
+            STOP_WAITING = 30
+            STATE = 0
+    elif STATE == 74:
+        driving_speed = 0.7
+        STOP_WAITING = 50
+        STATE = 0
     if counter % 5 == 0:
         counter += 1
     
