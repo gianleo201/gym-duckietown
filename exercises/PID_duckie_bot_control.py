@@ -4,7 +4,8 @@ Controller for duckie bot in Duckietown environment
 
 # run "python3 basic_control.py --map-name <map_name>" to start simulation
 # cd ~/.local/lib/python3.8/site-packages/duckietown_world/data/gd1/maps to show all the maps
-
+import threading
+from scipy.io import savemat
 import time
 import sys
 import argparse
@@ -120,7 +121,11 @@ radius_A = [None, None, None]
 radius_B = [None, None, None]
 pt = None
 ff = 0
+threashold = None
 last_point = None
+
+# result dict
+matlab_res = {"bot_path": [], "real_path": []}
 
 while True:
     '''
@@ -187,9 +192,14 @@ while True:
     #distance_to_road_center = min_dist
     #angle_from_straight_in_rads = angolo
 
+    ppap = env.cur_pos
+    matlab_res["bot_path"].append([ppap[0], ppap[2]])
+
 
 
     pt_new = env.closest_curve_point(env.cur_pos, env.cur_angle, mango=True)
+    if pt_new != None:
+        matlab_res["real_path"].append([pt_new[0][0], pt_new[0][2]])
     if pt_new == None:
         ff = 0
         pt = None
@@ -228,28 +238,36 @@ while True:
             # compute angular speed sign
             tangent = [pt[1][0], pt[1][2]]
             sas = np.sign(np.cross(tangent, vector_radius))
+            if sas == 1:
+                threashold = 0.185
+            elif sas == -1:
+                threashold = 0.09
             # finally compute feedforward action
-            ff = sas* (driving_speed / circle_radius)
+            ff = 1.6 * sas* (driving_speed / circle_radius)
         except:
             ff = 0
-    elif np.linalg.norm([pt_new[0][0]-last_point[0], pt_new[0][2]-last_point[1]]) <= 0.1:
+    elif threashold != None and np.linalg.norm([pt_new[0][0]-last_point[0], pt_new[0][2]-last_point[1]]) <= threashold:
         ff = 0
+        threashold = None
 
         
         
-    
+    '''
     # proportional constant on angle
     k_p_angle = 20
     prop_angle_action = k_p_angle * angle_from_straight_in_rads
+    # derivative constant on angle
+    k_d_angle = 1000
+    deriv_angle_action = k_d_angle * (angle_from_straight_in_rads - prev_angle)/sampling_time
+    '''
+
     # proportional constant on distance 
     k_p_dist = 15
     prop_dist_action = k_p_dist * distance_to_road_center
     # derivative constant on distance
-    k_d_dist = 60
+    k_d_dist = 65
     deriv_dist_action = k_d_dist * (distance_to_road_center - prev_dist)/sampling_time
-    # derivative constant on angle
-    k_d_angle = 1000
-    deriv_angle_action = k_d_angle * (angle_from_straight_in_rads - prev_angle)/sampling_time
+    
 
     # ignore derivative actions on the first loop
     if first:
@@ -371,7 +389,7 @@ while True:
         	env.render()
         	return
     	elif symbol == key.ESCAPE:
-        	env.close()
+        	env.close(); savemat("tino.mat", matlab_res)
         	sys.exit(0)
 
     # should execute the render of the next frame
