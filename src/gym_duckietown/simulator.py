@@ -1247,11 +1247,13 @@ class Simulator(gym.Env):
         return pts
 
     def closest_curve_point(
-        self, pos: np.array, angle: float
+        self, pos: np.array, angle: float, *, mango=False
     ) -> Tuple[Optional[np.array], Optional[np.array]]:
         """
             Get the closest point on the curve to a given point
             Also returns the tangent at that point.
+
+            If mango is set to True it also returns the nearest curve
 
             Returns None, None if not in a lane.
         """
@@ -1277,6 +1279,9 @@ class Simulator(gym.Env):
         t = bezier_closest(cps, pos)
         point = bezier_point(cps, t)
         tangent = bezier_tangent(cps, t)
+
+        if mango == True:
+            return point, tangent, cps
 
         return point, tangent
 

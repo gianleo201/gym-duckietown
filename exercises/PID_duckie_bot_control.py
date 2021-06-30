@@ -115,6 +115,13 @@ for elem in prova:
 #print(percorso)
 '''
 
+# data initialization to compute circle equation
+radius_A = [None, None, None]
+radius_B = [None, None, None]
+pt = None
+ff = 0
+last_point = None
+
 while True:
     '''
     min_dist = math.inf
@@ -180,6 +187,59 @@ while True:
     #distance_to_road_center = min_dist
     #angle_from_straight_in_rads = angolo
 
+
+
+    pt_new = env.closest_curve_point(env.cur_pos, env.cur_angle, mango=True)
+    if pt_new == None:
+        ff = 0
+        pt = None
+    elif pt == None or not (pt_new[2] == pt[2]).all():
+        pt = pt_new
+        # nearest curve
+        curve = pt[2]
+        # find farthest point on curve
+        source_point = [pt[0][0], pt[0][2]]
+        max_dist = -1
+        farthest_point = None
+        for p in curve:
+            point = [p[0], p[2]]
+            current_distance = np.linalg.norm([point[0]-source_point[0], point[1]-source_point[1]])
+            if current_distance >= max_dist:
+                max_dist = current_distance
+                farthest_point = point
+        last_point = farthest_point
+        # fill A matrix
+        radius_A[0] = [curve[0][0], curve[0][2], 1]
+        radius_A[1] = [curve[len(curve)-1][0], curve[len(curve)-1][2], 1]
+        radius_A[2] = [curve[len(curve)-2][0], curve[len(curve)-2][2], 1]
+        # fill B matrix
+        radius_B[0] = -(np.square(curve[0][0])+np.square(curve[0][2]))
+        radius_B[1] = -(np.square(curve[len(curve)-1][0])+np.square(curve[len(curve)-1][2]))
+        radius_B[2] = -(np.square(curve[len(curve)-2][0])+np.square(curve[len(curve)-2][2]))
+        # compute circle equation
+        try:
+            mango = np.linalg.solve(radius_A, radius_B)
+            # compute circle radius
+            circle_radius = np.sqrt(np.square(mango[0]/2.0)+np.square(mango[1]/2.0)-mango[2])
+            # compute circle center
+            circle_center = [-(mango[0]/2.0),-(mango[1]/2.0)]
+            # compute vector radius
+            vector_radius = [source_point[0]-circle_center[0], source_point[1]-circle_center[1]]
+            # compute angular speed sign
+            tangent = [pt[1][0], pt[1][2]]
+            sas = np.sign(np.cross(tangent, vector_radius))
+            # finally compute feedforward action
+            ff = sas* (driving_speed / circle_radius)
+            print(ff)
+        except:
+            ff = 0
+    elif np.linalg.norm([pt_new[0][0]-last_point[0], pt_new[0][2]-last_point[1]]) <= 0.1:
+        print("released feed forward")
+        ff = 0
+
+        
+        
+    
     # proportional constant on angle
     k_p_angle = 20
     prop_angle_action = k_p_angle * angle_from_straight_in_rads
@@ -207,7 +267,7 @@ while True:
 
     # angular speed of duckie_bot (positive when the duckie_bot rotate to the left)
     angular_speed = (
-        prop_dist_action + deriv_dist_action  #+ prop_angle_action + deriv_angle_action
+        prop_dist_action + deriv_dist_action + ff 
     ) # also the distance from the center of road affect the angular speed in order to lead duckie_bot toward the center
 
 
