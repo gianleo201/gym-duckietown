@@ -230,11 +230,9 @@ while True:
             sas = np.sign(np.cross(tangent, vector_radius))
             # finally compute feedforward action
             ff = sas* (driving_speed / circle_radius)
-            print(ff)
         except:
             ff = 0
     elif np.linalg.norm([pt_new[0][0]-last_point[0], pt_new[0][2]-last_point[1]]) <= 0.1:
-        print("released feed forward")
         ff = 0
 
         
