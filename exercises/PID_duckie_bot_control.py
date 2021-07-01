@@ -5,6 +5,7 @@ Controller for duckie bot in Duckietown environment
 # run "python3 basic_control.py --map-name <map_name>" to start simulation
 # cd ~/.local/lib/python3.8/site-packages/duckietown_world/data/gd1/maps to show all the maps
 import threading
+from numpy.linalg.linalg import LinAlgError
 from scipy.io import savemat
 import time
 import sys
@@ -55,7 +56,8 @@ STATE = DEFAULT_STATE
 first = True
 driving_speed = DEFAULT_SPEED # driving speed of bot
 angular_speed = 0.0   # angular speed of bot
-rotation_strength = 2 #angular speed when turning left/right
+rotation_strength_left = 2 #angular speed when turning left
+rotation_strength_right = 3.2 #angular speed when turning right
 
 #object from class detector for identifying apriltags
 at_detector = Detector(families='tag36h11',
@@ -123,9 +125,10 @@ pt = None
 ff = 0
 threashold = None
 last_point = None
+curvature = 0
 
 # result dict
-matlab_res = {"bot_path": [], "real_path": []}
+matlab_res = {"bot_path": [], "real_path": [], "angular_speed": [], "distance_error": [], "angle_error": []}
 
 while True:
     '''
@@ -186,6 +189,10 @@ while True:
     lane_pose = env.get_lane_pos2(env.cur_pos, env.cur_angle)
     distance_to_road_center = lane_pose.dist
     angle_from_straight_in_rads = lane_pose.angle_rad
+
+    matlab_res["distance_error"].append(distance_to_road_center)
+    matlab_res["angle_error"].append(angle_from_straight_in_rads)
+
     #print(env.cur_pos, env.cur_angle, "\n")
     #print(lane_pose.dist, lane_pose.angle_rad)
     #print(min_dist, posx, posy)
@@ -194,8 +201,6 @@ while True:
 
     ppap = env.cur_pos
     matlab_res["bot_path"].append([ppap[0], ppap[2]])
-
-
 
     pt_new = env.closest_curve_point(env.cur_pos, env.cur_angle, mango=True)
     if pt_new != None:
@@ -238,17 +243,27 @@ while True:
             # compute angular speed sign
             tangent = [pt[1][0], pt[1][2]]
             sas = np.sign(np.cross(tangent, vector_radius))
+
+            # compute curvature
+            curvature = (circle_radius)**(-1)
+            # ...
+
+            if curvature < 0.0001:
+                raise LinAlgError("curvature too small")
             if sas == 1:
-                threashold = 0.185
+                threashold = 0.2
             elif sas == -1:
-                threashold = 0.09
+                driving_speed = 0.35
+                threashold = 0.12
             # finally compute feedforward action
-            ff = 1.6 * sas* (driving_speed / circle_radius)
+            ff = 1.5 * sas* (driving_speed / circle_radius)
         except:
             ff = 0
+            driving_speed = DEFAULT_SPEED
     elif threashold != None and np.linalg.norm([pt_new[0][0]-last_point[0], pt_new[0][2]-last_point[1]]) <= threashold:
         ff = 0
         threashold = None
+        driving_speed = DEFAULT_SPEED
 
         
         
@@ -275,17 +290,11 @@ while True:
         deriv_dist_action = 0.0
         first = False
 
-    # New controller only proportional from state space linearized (it works worse)
-    lambda_1 = -5
-    lambda_2 = -5
-    # command = ((lambda_1*lambda_2)/(driving_speed*1.4706))*distance_to_road_center+(lambda_1+lambda_2)*angle_from_straight_in_rads
-
 
     # angular speed of duckie_bot (positive when the duckie_bot rotate to the left)
     angular_speed = (
         prop_dist_action + deriv_dist_action + ff 
     ) # also the distance from the center of road affect the angular speed in order to lead duckie_bot toward the center
-
 
     # update previous value to gain the incremental ratio in the next loop
     prev_dist = distance_to_road_center
@@ -330,24 +339,30 @@ while True:
         driving_speed = 0.4
         STATE = DEFAULT_STATE
     elif STATE == 9:
-        STOP_ROTATING = 120
+        print("giro a destra")
+        STOP_ROTATING = 112
+        STOP_WAITING = 15
         STATE = -2
     elif STATE == 10:
-        STOP_ROTATING = 120
-        STOP_WAITING = 20
+        print("giro a sinistra")
+        STOP_ROTATING = 105
+        STOP_WAITING = 23
         STATE = -3
     elif STATE == -2:
-        STOP_ROTATING -= rotation_strength
-        angular_speed = prev_angle - rotation_strength
-        if(STOP_ROTATING == 0):
-            STATE = -1
+        if STOP_WAITING > 0:
+            STOP_WAITING -= 1
+        else:
+            STOP_ROTATING -= rotation_strength_right
+            angular_speed = prev_angle - rotation_strength_right
+            if(STOP_ROTATING <= 0):
+                STATE = -1
     elif STATE == -3:
         if STOP_WAITING > 0:
             STOP_WAITING -= 1
         else:
-            STOP_ROTATING -= rotation_strength
-            angular_speed = prev_angle + rotation_strength
-            if(STOP_ROTATING == 0):
+            STOP_ROTATING -= rotation_strength_left
+            angular_speed = prev_angle + rotation_strength_left
+            if(STOP_ROTATING <= 0):
                 STATE = -1
     elif STATE == 12:
         driving_speed = 0.18
@@ -368,6 +383,8 @@ while True:
     # set controls
     obs, recompense, fini, info = env.step([driving_speed, angular_speed])
     total_recompense += recompense
+
+    matlab_res["angular_speed"].append(angular_speed)
 
     # prints variations of parameters
     """
