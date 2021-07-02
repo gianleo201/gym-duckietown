@@ -32,15 +32,19 @@ args = parser.parse_args()
 env: DuckietownEnv
 
 if args.env_name is None:
-    env = DuckietownEnv(map_name=args.map_name, domain_rand=False, draw_bbox=False, user_tile_start=[3,2])
+    env = DuckietownEnv(map_name=args.map_name, domain_rand=False, draw_bbox=False, user_tile_start=[2,7])
 else:
     env = gym.make(args.env_name)
 
 ''' curve dx test config
 # start tile = [3,0]
 env.start_pose = [[0.63*0.5,0,0.7*0.63],0]
-'''
+curve sx test config
+# start tile = [3,2]
 env.start_pose = [[0.63*0.5,0,0.7*0.63],0]
+'''
+
+env.start_pose = [[0, 0, 0.63*0.7],-0.1]
 
 obs = env.reset()
 env.render()
@@ -62,8 +66,8 @@ STATE = DEFAULT_STATE
 first = True
 driving_speed = DEFAULT_SPEED # driving speed of bot
 angular_speed = 0.0   # angular speed of bot
-rotation_strength_left = 2 #angular speed when turning left
-rotation_strength_right = 3.2 #angular speed when turning right
+rotation_strength_left = 1.88 #angular speed when turning left
+rotation_strength_right = 3.4 #angular speed when turning right
 
 #object from class detector for identifying apriltags
 at_detector = Detector(families='tag36h11',
@@ -134,7 +138,7 @@ last_point = None
 curvature = 0
 
 # result dict
-matlab_res = {"bot_path": [], "real_path": [], "angular_speed": [], "distance_error": [], "angle_error": []}
+matlab_res = {"bot_path": [], "real_path": [], "angular_speed": [], "distance_error": [], "angle_error": [], "driving_speed":[]}
 
 while True:
     '''
@@ -346,12 +350,12 @@ while True:
         STATE = DEFAULT_STATE
     elif STATE == 9:
         print("giro a destra")
-        STOP_ROTATING = 112
-        STOP_WAITING = 15
+        STOP_ROTATING = 100
+        STOP_WAITING = 18
         STATE = -2
     elif STATE == 10:
         print("giro a sinistra")
-        STOP_ROTATING = 105
+        STOP_ROTATING = 110
         STOP_WAITING = 23
         STATE = -3
     elif STATE == -2:
@@ -359,15 +363,16 @@ while True:
             STOP_WAITING -= 1
         else:
             STOP_ROTATING -= rotation_strength_right
-            angular_speed = prev_angle - rotation_strength_right
+            angular_speed = - rotation_strength_right
             if(STOP_ROTATING <= 0):
+                print("the end")
                 STATE = -1
     elif STATE == -3:
         if STOP_WAITING > 0:
             STOP_WAITING -= 1
         else:
             STOP_ROTATING -= rotation_strength_left
-            angular_speed = prev_angle + rotation_strength_left
+            angular_speed = rotation_strength_left
             if(STOP_ROTATING <= 0):
                 STATE = -1
     elif STATE == 12:
@@ -391,6 +396,7 @@ while True:
     total_recompense += recompense
 
     matlab_res["angular_speed"].append(angular_speed)
+    matlab_res["driving_speed"].append(driving_speed)
 
     # prints variations of parameters
     """
@@ -403,17 +409,17 @@ while True:
     #enables user to reset or exit the simulation
     @env.unwrapped.window.event
     def on_key_press(symbol, modifiers):
-    	"""
-    	This handler processes keyboard commands that control the simulation
-    	"""
-
-    	if symbol == key.BACKSPACE or symbol == key.SLASH:
-        	env.reset()
-        	env.render()
-        	return
-    	elif symbol == key.ESCAPE:
-        	env.close(); savemat("tino.mat", matlab_res)
-        	sys.exit(0)
+        if symbol == key.BACKSPACE or symbol == key.SLASH:
+            env.reset()
+            env.render()
+            return
+        elif symbol == key.T:
+            imgage = Image.fromarray(obs)
+            imgage.save("shot.png")
+        elif symbol == key.ESCAPE:
+            env.close()
+            savemat("tino.mat", matlab_res)
+            sys.exit()
 
     # should execute the render of the next frame
     env.render()
