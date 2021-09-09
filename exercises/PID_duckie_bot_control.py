@@ -32,7 +32,7 @@ args = parser.parse_args()
 env: DuckietownEnv
 
 if args.env_name is None:
-    env = DuckietownEnv(map_name=args.map_name, domain_rand=False, draw_bbox=False, user_tile_start=[2,7])
+    env = DuckietownEnv(map_name=args.map_name, domain_rand=False, draw_bbox=False, user_tile_start=[1,0])
 else:
     env = gym.make(args.env_name)
 
@@ -44,7 +44,7 @@ curve sx test config
 env.start_pose = [[0.63*0.5,0,0.7*0.63],0]
 '''
 
-env.start_pose = [[0, 0, 0.63*0.7],-0.1]
+env.start_pose = [[0, 0, 0.63*0.5],0.785398]
 
 obs = env.reset()
 env.render()
@@ -57,8 +57,7 @@ DEFAULT_SPEED = 0.5
 STOP_WAITING = 0
 STOP_ROTATING = 0
 TILE_SIZE = 0.585
-
-sampling_time = 0.1 # not sure about this
+sampling_time = env.delta_time # 0.033
 prev_dist = 0.0     # distance_error(k-1)
 prev_angle = 0.0    # angle_error(k-1)
 counter = 0         # handle cycles flow
@@ -290,7 +289,7 @@ while True:
     k_p_dist = 15
     prop_dist_action = k_p_dist * distance_to_road_center
     # derivative constant on distance
-    k_d_dist = 60
+    k_d_dist = 20
     deriv_dist_action = k_d_dist * (distance_to_road_center - prev_dist)/sampling_time
     
 

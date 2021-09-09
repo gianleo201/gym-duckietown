@@ -8,7 +8,7 @@
 # The orientations are North, South, East, West. This is the direction in
 # which the agent is expected to drive when going onto this tile.
 tiles:
-- [floor    ,straight/W     , straight/W , straight/W  , straight/N   , straight/W    , floor]
+- [floor    ,straight/W     , straight/W , straight/W  , straight/W   , straight/W    , floor]
 - [floor    ,straight/W     , straight/W , straight/W  , straight/N   , straight/W    , floor]
 - [floor    ,straight/W     , straight/W , straight/W  , curve_left/E , straight/W    , floor]
 - [floor    , floor         , floor      , floor        , floor       , floor         , floor]
