@@ -32,7 +32,7 @@ args = parser.parse_args()
 env: DuckietownEnv
 
 if args.env_name is None:
-    env = DuckietownEnv(map_name=args.map_name, domain_rand=False, draw_bbox=False, user_tile_start=[1,0])
+    env = DuckietownEnv(map_name=args.map_name, domain_rand=False, draw_bbox=False, user_tile_start=[2,4])
 else:
     env = gym.make(args.env_name)
 
@@ -44,13 +44,12 @@ curve sx test config
 env.start_pose = [[0.63*0.5,0,0.7*0.63],0]
 '''
 
-env.start_pose = [[0, 0, 0.63*0.5],0.785398]
+env.start_pose = [[0, 0, 0.63*0.7],0]
 
 obs = env.reset()
 env.render()
 
 total_recompense = 0
-
 DEFAULT_STATE = -888
 #DEFAULT_SPEED = 0.35
 DEFAULT_SPEED = 0.5
@@ -74,7 +73,7 @@ at_detector = Detector(families='tag36h11',
                        quad_decimate=1.0,
                        quad_sigma=0.0,
                        refine_edges=1,
-                       decode_sharpening=0.10,
+                       decode_sharpening=0.25,
                        debug=0)
 
 # load settings from yaml file
@@ -274,16 +273,9 @@ while True:
         threashold = None
         driving_speed = DEFAULT_SPEED
 
-        
-        
-    '''
-    # proportional constant on angle
-    k_p_angle = 20
-    prop_angle_action = k_p_angle * angle_from_straight_in_rads
-    # derivative constant on angle
-    k_d_angle = 1000
-    deriv_angle_action = k_d_angle * (angle_from_straight_in_rads - prev_angle)/sampling_time
-    '''
+    
+
+
 
     # proportional constant on distance 
     k_p_dist = 15
@@ -310,25 +302,26 @@ while True:
     prev_angle = angle_from_straight_in_rads
     
     # code executed only every tot frames
-    if STATE == -888 and ((counter % 5) != 0):
-        # catch apriltags
-        # imgage = Image.fromarray(obs)
-        # this is the line code that makes the program slower beacuase interacts with hard disk
-        # imgage.save("test_image.png")
-
-        # img = cv2.imread(test_images_path+'/'+parameters['sample_test']['file'], cv2.IMREAD_GRAYSCALE)
+    if STATE == DEFAULT_STATE and ((counter % 5) != 0):
         ignore = 0 #if the apriltag is too far, ignore it
         tags = at_detector.detect(cv2.cvtColor(obs, cv2.COLOR_BGR2GRAY), True, camera_params, parameters['sample_test']['tag_size'])
         tag_ids = [tag.tag_id for tag in tags]
-        tag_pos = [tag.pose_t[1] for tag in tags]
+        tag_pos = [tag.pose_t[2] for tag in tags]
         if len(tags) > 0:
-            if(abs(tags[0].pose_t[1])>0.05):
+            # handle multiple tags
+            nearest_tag = tags[0]
+            for t in tags:
+                if t.pose_t[2] < nearest_tag.pose_t[2]:
+                    nearest_tag = t
+            if nearest_tag.pose_t[2] > 0.36:
                 ignore = 1
             if not ignore:
+                '''
                 print("TAG(S) FOUND AT STEP ",env.unwrapped.step_count,"!")
                 print(tag_pos)
                 print(len(tags), " tag(s) found: ", tag_ids)
-                STATE = tag_ids[0]
+                '''
+                STATE = nearest_tag.tag_id
         counter = 0
     elif STATE == 1:
         driving_speed -= 0.035
@@ -364,7 +357,6 @@ while True:
             STOP_ROTATING -= rotation_strength_right
             angular_speed = - rotation_strength_right
             if(STOP_ROTATING <= 0):
-                print("the end")
                 STATE = -1
     elif STATE == -3:
         if STOP_WAITING > 0:
