@@ -133,34 +133,5 @@ objects:
   pos: [2.96, -2.04]
   rotate: 0
   height: 0.18
- duckie1:
-  kind: duckie
-  pos: [2.9, 2.7]
-  rotate: -90
-  height: 0.18
- duckie2:
-  kind: duckie
-  pos: [3.5, 2.5]
-  rotate: -90
-  height: 0.08
- duckie3:
-  kind: duckie
-  pos: [2.2, 2.2]
-  rotate: -90
-  height: 0.25
- duckie4:
-  kind: duckie
-  pos: [2.5, 5.6]
-  rotate: -90
-  height: 0.28
- duckie5:
-  kind: duckie
-  pos: [3.5, 5.3]
-  rotate: -90
-  height: 0.38
- duckie6:
-  kind: duckie
-  pos: [2.51,1.02]
-  height: 0.1
 
 tile_size: 0.63
